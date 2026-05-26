@@ -1,0 +1,80 @@
+"""
+Rabin-Karp Algorithm
+-------------------------------------
+Uses rolling hashing to compare the pattern's hash against a sliding
+window hash over the text.  Only performs character-by-character
+comparison when hashes match ("spurious hits" handled gracefully).
+
+Time Complexity : O(n + m) average; O(n * m) worst case (all spurious hits)
+Space Complexity: O(1)
+
+Default hash: polynomial rolling hash with a prime base and modulus.
+"""
+
+BASE    = 256    # number of possible characters (ASCII)
+MODULUS = 101    # a prime modulus to keep numbers small
+
+
+def rabin_karp_search(text: str, pattern: str) -> list[int]:
+    """
+    Returns all starting indices where `pattern` occurs in `text`.
+
+    Args:
+        text    : The source string to search in.
+        pattern : The string to search for.
+
+    Returns:
+        List of starting positions (0-indexed) where a match is found.
+    """
+    n = len(text)
+    m = len(pattern)
+    matches = []
+
+    if m > n or m == 0:
+        return matches
+
+    # h = BASE^(m-1) mod MODULUS  — used to drop the leading character
+    h = pow(BASE, m - 1, MODULUS)
+
+    # Compute initial hash for pattern and first window of text
+    pattern_hash = 0
+    window_hash  = 0
+
+    for i in range(m):
+        pattern_hash = (BASE * pattern_hash + ord(pattern[i])) % MODULUS
+        window_hash  = (BASE * window_hash  + ord(text[i]))    % MODULUS
+
+    # Slide the window over the text
+    for i in range(n - m + 1):
+        if pattern_hash == window_hash:
+            # Hash match: verify character by character to rule out collisions
+            if text[i : i + m] == pattern:
+                matches.append(i)
+
+        # Roll the hash to the next window (remove leading char, add next char)
+        if i < n - m:
+            window_hash = (
+                BASE * (window_hash - ord(text[i]) * h) + ord(text[i + m])
+            ) % MODULUS
+
+            # Keep hash non-negative
+            if window_hash < 0:
+                window_hash += MODULUS
+
+    return matches
+
+
+# ── Demo ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    text    = "AABAACAADAABAABA"
+    pattern = "AABA"
+
+    results = rabin_karp_search(text, pattern)
+
+    print("Text   :", text)
+    print("Pattern:", pattern)
+    print("Found at indices:", results)
+
+    for idx in results:
+        print(f"  [{idx}] {text[idx : idx + len(pattern)]}")
