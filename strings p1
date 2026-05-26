@@ -1,0 +1,55 @@
+"""
+Naive Pattern Matching (Brute Force)
+-------------------------------------
+Slides the pattern over the text one position at a time,
+checking for a match at each position.
+
+Time Complexity : O((n - m + 1) * m)  →  O(n * m) worst case
+Space Complexity: O(1)
+"""
+
+
+def naive_search(text: str, pattern: str) -> list[int]:
+    """
+    Returns all starting indices where `pattern` occurs in `text`.
+
+    Args:
+        text    : The source string to search in.
+        pattern : The string to search for.
+
+    Returns:
+        List of starting positions (0-indexed) where a match is found.
+    """
+    n = len(text)
+    m = len(pattern)
+    matches = []
+
+    # Slide the pattern over every possible starting position
+    for i in range(n - m + 1):
+        j = 0
+
+        # Compare pattern characters one by one
+        while j < m and text[i + j] == pattern[j]:
+            j += 1
+
+        # Full match found
+        if j == m:
+            matches.append(i)
+
+    return matches
+
+
+# ── Demo ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    text    = "AABAACAADAABAABA"
+    pattern = "AABA"
+
+    results = naive_search(text, pattern)
+
+    print("Text   :", text)
+    print("Pattern:", pattern)
+    print("Found at indices:", results)
+
+    for idx in results:
+        print(f"  [{idx}] {text[idx : idx + len(pattern)]}")
