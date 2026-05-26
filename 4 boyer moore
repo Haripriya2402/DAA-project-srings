@@ -1,0 +1,136 @@
+"""
+Boyer-Moore String Search Algorithm
+-------------------------------------
+Processes the pattern from right to left and uses two heuristics to
+skip large portions of the text on mismatches:
+
+  1. Bad Character Heuristic  — when a mismatch occurs at text[i],
+     align the rightmost occurrence of that character in the pattern
+     with text[i].  If the character doesn't appear in the pattern,
+     skip past it entirely.
+
+  2. Good Suffix Heuristic    — if a suffix of the pattern matched
+     but then mismatched, shift the pattern to the next occurrence of
+     that matched suffix (or its prefix) in the pattern.
+
+This implementation uses both heuristics and takes the maximum skip.
+
+Time Complexity : O(n / m) best case (sub-linear!);
+                  O(n * m) worst case (rare, e.g. all same characters)
+Space Complexity: O(m + alphabet_size)
+"""
+
+from typing import Dict
+
+ALPHABET_SIZE = 256   # ASCII
+
+
+# ── Preprocessing ─────────────────────────────────────────────────────────────
+
+def build_bad_char_table(pattern: str) -> Dict[str, int]:
+    """
+    Maps each character in the pattern to its rightmost index.
+    Characters not in the pattern are implicitly treated as -1 during search.
+    """
+    table = {}
+    for i, ch in enumerate(pattern):
+        table[ch] = i
+    return table
+
+
+def build_good_suffix_table(pattern: str) -> list[int]:
+    """
+    Builds the good-suffix shift table for the Boyer-Moore algorithm.
+
+    shift[i] = how many positions to shift the pattern when a mismatch
+               occurs at pattern[i - 1] (i.e., the first i characters
+               of the pattern matched from the right).
+    """
+    m      = len(pattern)
+    shift  = [m] * (m + 1)          # default: shift by full pattern length
+    border = [0]  * (m + 1)
+
+    # Phase 1: compute border positions (suffix that is also a prefix)
+    i = m
+    j = m + 1
+    border[i] = j
+
+    while i > 0:
+        while j <= m and pattern[i - 1] != pattern[j - 1]:
+            if shift[j] == m:
+                shift[j] = j - i
+            j = border[j]
+        i -= 1
+        j -= 1
+        border[i] = j
+
+    # Phase 2: fill in remaining shifts using the border array
+    j = border[0]
+    for i in range(m + 1):
+        if shift[i] == m:
+            shift[i] = j
+        if i == j:
+            j = border[j]
+
+    return shift
+
+
+# ── Search ────────────────────────────────────────────────────────────────────
+
+def boyer_moore_search(text: str, pattern: str) -> list[int]:
+    """
+    Returns all starting indices where `pattern` occurs in `text`.
+
+    Args:
+        text    : The source string to search in.
+        pattern : The string to search for.
+
+    Returns:
+        List of starting positions (0-indexed) where a match is found.
+    """
+    n = len(text)
+    m = len(pattern)
+    matches = []
+
+    if m == 0 or m > n:
+        return matches
+
+    bad_char   = build_bad_char_table(pattern)
+    good_shift = build_good_suffix_table(pattern)
+
+    s = 0   # shift of the pattern relative to the text
+
+    while s <= n - m:
+        j = m - 1   # compare from right to left
+
+        # Move j left while characters match
+        while j >= 0 and pattern[j] == text[s + j]:
+            j -= 1
+
+        if j < 0:
+            # Full match found
+            matches.append(s)
+            s += good_shift[0]
+        else:
+            # Mismatch: compute both heuristic shifts and take the larger one
+            bad_char_shift  = j - bad_char.get(text[s + j], -1)
+            good_suffix_shift = good_shift[j + 1]
+            s += max(1, bad_char_shift, good_suffix_shift)
+
+    return matches
+
+
+# ── Demo ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    text    = "AABAACAADAABAABA"
+    pattern = "AABA"
+
+    results = boyer_moore_search(text, pattern)
+
+    print("Text   :", text)
+    print("Pattern:", pattern)
+    print("Found at indices:", results)
+
+    for idx in results:
+        print(f"  [{idx}] {text[idx : idx + len(pattern)]}")
